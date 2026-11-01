@@ -247,7 +247,7 @@ function getDb(){
 }
 function renderSync(){
   var el=document.getElementById('sync'); if(!el)return;
-  var m={idle:'',ok:'وصلت نتيجتكنّ إلى لوحة المعلّمة. الرمز أدناه نسخة احتياطية.',off:'اقرأن الرمز أدناه للمعلّمة لتدخله في لوحتها.',fail:'تعذّر الإرسال. اقرأن الرمز أدناه للمعلّمة.'};
+  var m={idle:'',ok:'وصلت نتيجتكنّ إلى لوحة المعلّمة.',off:'لم يُربط التاب بلوحة المعلّمة. اكتبن رقم الغرفة في صفحة البداية.',fail:'تعذّر إرسال النتيجة. تأكدن من اتصال التاب بالإنترنت وأخبرن المعلّمة.'};
   el.textContent=m[syncState]||'';
 }
 /* result code: group(1) missions-done(1) 5x[points(2)+bonus(1)] checksum(2) = 19 digits */
@@ -269,7 +269,7 @@ function decodeCode(raw){
   for(var i=0;i<5;i++){var o=2+i*3; if(i<mi){var pp=+d.slice(o,o+2),bb=+d[o+2];pts.push(pp);bonus.push(bb);tot+=pp+bb}}
   return {g:g-1,name:GROUPS[g-1].name,mi:mi,pts:pts,bonus:bonus,secs:[],total:tot,done:mi>=5,ex:null,ts:Date.now()};
 }
-function codeHTML(){return '<div class="codebox"><small>رمز النتيجة للمعلّمة</small><b>'+makeCode()+'</b></div>'}
+function codeHTML(){return ''}
 function push(){
   if(!G)return;
   var doc={g:G.g,name:GROUPS[G.g].name,size:G.size,mi:G.mi,pts:G.pts.slice(),bonus:G.bonus.slice(),secs:G.secs.slice(),
@@ -749,7 +749,6 @@ function statusOf(r){
 }
 function drawBoard(){
   var pane=$('#pane'); if(!pane)return;
-  var oldv=($('#codein')||{}).value||'', oldmsg=($('#codemsg')||{}).textContent||'';
   var tops=GROUPS.map(function(_,g){return score(g)});
   var max=Math.max.apply(null,tops.concat([25]));
   var order=tops.map(function(s,i){return i}).sort(function(a,b){return tops[b]-tops[a]||a-b});
@@ -769,18 +768,9 @@ function drawBoard(){
   pane.innerHTML='<section class="card board" style="margin-top:18px"><div class="row" style="justify-content:space-between"><div><p class="eyebrow">الترتيب المباشر</p><h2 style="font-size:1.9rem">لوحة المجموعات</h2></div>'+
     '<button class="btn ghost" id="reset">تصفير اللوحة</button></div>'+
     (dbOn?'':'<div class="codebox" style="margin:10px 0"><small>رقم الغرفة: اكتبيه على السبورة لتدخله كل مجموعة في صفحة البداية</small><b>'+roomCode()+'</b></div><div class="row" style="margin-bottom:6px"><button class="btn ghost" id="newroom">رقم غرفة جديد</button></div>')+
-    '<p class="lead">'+((dbOn||apiOn)?'متّصلة: تصل النتائج تلقائيًا. يمكنك أيضًا إدخال رمز مجموعة.':'غير متّصلة بالخادم. اطلبي من كل مجموعة قراءة الرمز الظاهر على تابها بعد كل مهمة، وأدخليه هنا.')+'</p>'+
-    '<div class="codein"><input id="codein" type="text" inputmode="numeric" autocomplete="off" placeholder="الصقي أو اكتبي الرمز المكوّن من 19 رقمًا" value="'+esc(oldv)+'"><button class="btn plum" id="codeadd">إضافة الرمز</button></div><p class="lead" id="codemsg" style="min-height:1.7em">'+esc(oldmsg)+'</p>'+rows+'</section>';
-  var addCode=function(){
-    var r=decodeCode($('#codein').value), msg=$('#codemsg');
-    if(!r){msg.textContent='الرمز غير صحيح. تأكدي من الأرقام وأعيدي المحاولة.';sfx.bad();return}
-    imported[r.g]=r; store.set(CKEY,imported); results[r.g]=r;
-    $('#codein').value=''; drawBoard();
-    $('#codemsg').textContent='أُضيفت نتيجة المجموعة '+GROUPS[r.g].n+': '+r.total+' نقطة بعد '+r.mi+' مهمات.';
-  };
-  $('#codeadd').onclick=addCode;
+    '<p class="lead">'+((dbOn||apiOn)?'متّصلة: تصل النتائج تلقائيًا بعد كل مهمة. استخدمي أزرار التعديل لنقاط المناقشة.':'غير متّصلة بالخادم. تأكدي من الإنترنت ومن رابط الموقع على نتيفاي.')+'</p>'+
+    rows+'</section>';
   var nr=$('#newroom'); if(nr) nr.onclick=function(){store.set(RKEY,String(1000+Math.floor(Math.random()*9000)));lastSig='';pollApi();drawBoard()};
-  $('#codein').onkeydown=function(e){if(e.key==='Enter')addCode()};
   $$('.ctl button').forEach(function(b){b.onclick=function(){
     var g=+b.parentNode.dataset.g; setAdj(g,adj[g]+(+b.dataset.d));
   }});
