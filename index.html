@@ -239,7 +239,7 @@ var store={
   del:function(k){delete mem[k];try{localStorage.removeItem(k)}catch(e){}}
 };
 var SKEY='skills-challenge-session-v1', TKEY='skills-challenge-board-v1';
-var RKEY='skills-challenge-room-v1';
+var RKEY='skills-challenge-room-v1', DEFAULT_ROOM='8001';
 var dbp=null, wchain=Promise.resolve(), syncState='idle';
 function getDb(){
   if(!dbp) dbp=(window.claude&&window.claude.use)?window.claude.use('db').catch(function(){return null}):Promise.resolve(null);
@@ -437,14 +437,14 @@ function welcome(){
     '<section class="card pick"><h3>1. اختَرن مجموعتكنّ</h3><div class="gpick" id="gp">'+gp+'</div>'+
     '<h3>2. كم طالبة في المجموعة؟</h3><div class="seg" id="sz"><button data-s="4" aria-pressed="'+(selectedSize===4)+'">4 طالبات</button><button data-s="5" aria-pressed="'+(selectedSize===5)+'">5 طالبات</button></div>'+
     '<p class="lead">تأخذ كل طالبة رقمًا من 1 إلى <span id="szn">'+selectedSize+'</span>. الرقم ثابت طوال اللعبة، أما الدور فيتغيّر مع كل مهمة.</p>'+
-    '<div class="field"><label for="room">رقم الغرفة (تعطيه المعلّمة)</label><input id="room" type="text" inputmode="numeric" autocomplete="off" maxlength="8" dir="ltr" style="text-align:start;max-width:14em;font-weight:700;letter-spacing:.1em" placeholder="مثال: 4821" value="'+esc(store.get(RKEY)||'')+'"></div>'+
+    '<div class="field"><label for="room">رقم الغرفة (تعطيه المعلّمة)</label><input id="room" type="text" inputmode="numeric" autocomplete="off" maxlength="8" dir="ltr" style="text-align:start;max-width:14em;font-weight:700;letter-spacing:.1em" placeholder="مثال: 4821" value="'+esc(store.get(RKEY)||DEFAULT_ROOM)+'"></div>'+
     '<div class="row end"><button class="btn" id="go">ابدأن التحدّي</button></div></section>'+
     '<section class="rules"><div class="rule"><b>5 مهمات</b><span>من تعريف المهارة إلى شجرة أنواعها.</span></div>'+
     '<div class="rule"><b>20 نقطة لكل مهمة</b><span>تكتمل بمكافأة سرعة حتى 5 نقاط.</span></div>'+
     '<div class="rule"><b>الدقة أولًا</b><span>لا تُمنح مكافأة السرعة لمن أخطأت كثيرًا.</span></div></section>';
   $$('#gp .gbtn').forEach(function(b){b.onclick=function(){selectedGroup=+b.dataset.g;$$('#gp .gbtn').forEach(function(x){x.setAttribute('aria-pressed',x===b)})}});
   $$('#sz button').forEach(function(b){b.onclick=function(){selectedSize=+b.dataset.s;$('#szn').textContent=selectedSize;$$('#sz button').forEach(function(x){x.setAttribute('aria-pressed',x===b)})}});
-  $('#go').onclick=function(){var rv=($('#room').value||'').replace(/\D/g,''); if(rv)store.set(RKEY,rv); else store.del(RKEY); G={g:selectedGroup,size:selectedSize,mi:0,pts:[],bonus:[],secs:[],ex:null};store.del(SKEY);saveG();briefing()};
+  $('#go').onclick=function(){var rv=($('#room').value||'').replace(/\D/g,''); store.set(RKEY,rv||DEFAULT_ROOM); G={g:selectedGroup,size:selectedSize,mi:0,pts:[],bonus:[],secs:[],ex:null};store.del(SKEY);saveG();briefing()};
   if(saved && saved.mi<5){
     $('#resume').onclick=function(){G=saved;briefing()};
     $('#fresh').onclick=function(){store.del(SKEY);welcome()};
@@ -714,7 +714,7 @@ function startSync(){
 }
 function roomCode(){
   var r=store.get(RKEY);
-  if(!r){r=String(1000+Math.floor(Math.random()*9000));store.set(RKEY,r)}
+  if(!r){r=DEFAULT_ROOM;store.set(RKEY,r)}
   return r;
 }
 function pollApi(){
@@ -767,10 +767,10 @@ function drawBoard(){
   }).join('');
   pane.innerHTML='<section class="card board" style="margin-top:18px"><div class="row" style="justify-content:space-between"><div><p class="eyebrow">الترتيب المباشر</p><h2 style="font-size:1.9rem">لوحة المجموعات</h2></div>'+
     '<button class="btn ghost" id="reset">تصفير اللوحة</button></div>'+
-    (dbOn?'':'<div class="codebox" style="margin:10px 0"><small>رقم الغرفة: اكتبيه على السبورة لتدخله كل مجموعة في صفحة البداية</small><b>'+roomCode()+'</b></div><div class="row" style="margin-bottom:6px"><button class="btn ghost" id="newroom">رقم غرفة جديد</button></div>')+
+    (dbOn?'':'<div class="codebox" style="margin:10px 0"><small>رقم الغرفة: اكتبيه على السبورة لتدخله كل مجموعة في صفحة البداية</small><b>'+roomCode()+'</b></div><div class="codein" style="margin-bottom:6px"><input id="roomset" type="text" inputmode="numeric" maxlength="8" placeholder="غيّري الرقم (4 أرقام أو أكثر)"><button class="btn ghost" id="newroom">تغيير الرقم</button></div>')+
     '<p class="lead">'+((dbOn||apiOn)?'متّصلة: تصل النتائج تلقائيًا بعد كل مهمة. استخدمي أزرار التعديل لنقاط المناقشة.':'غير متّصلة بالخادم. تأكدي من الإنترنت ومن رابط الموقع على نتيفاي.')+'</p>'+
     rows+'</section>';
-  var nr=$('#newroom'); if(nr) nr.onclick=function(){store.set(RKEY,String(1000+Math.floor(Math.random()*9000)));lastSig='';pollApi();drawBoard()};
+  var nr=$('#newroom'); if(nr) nr.onclick=function(){var v=($('#roomset').value||'').replace(/\D/g,''); if(v.length<4)return; store.set(RKEY,v);lastSig='';results=Object.assign({},imported);pollApi();drawBoard()};
   $$('.ctl button').forEach(function(b){b.onclick=function(){
     var g=+b.parentNode.dataset.g; setAdj(g,adj[g]+(+b.dataset.d));
   }});
